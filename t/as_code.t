@@ -15,15 +15,11 @@ database: dbi:SQLite:dbname=./t/wafers.db
 query:
   SELECT material, COUNT(*) AS howmany, 1 AS one
   FROM   grown_wafers
-  WHERE diameter = [% diameter %]
+  WHERE diameter = ?
   GROUP BY material
   ORDER BY material, diameter
 
-munge query:
-	diameter => 4
-
-munge query:
-	diameter => 3
+query parameter: 3
 
 delete column one
 

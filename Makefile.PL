@@ -11,9 +11,8 @@ WriteMakefile(
     PREREQ_PM => {
         'DBI'            => 1,
         'Filter::Simple' => 0,
-        'Template'       => 2,
         'Test::More'     => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean               => { FILES => 'Querylet-*' },
+    clean               => { FILES => 'Querylet-* wafers.csv' },
 );

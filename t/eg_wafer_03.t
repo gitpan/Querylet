@@ -10,7 +10,7 @@ use Querylet;
 database: dbi:SQLite:dbname=./t/wafers.db
 
 query:
-  SELECT material, COUNT(*) AS howmany, 1 AS one
+  SELECT material, COUNT(*) AS howmany, 1 AS one, 2 AS two
   FROM   grown_wafers
   WHERE diameter = ?
   GROUP BY material
@@ -19,6 +19,9 @@ query:
 query parameter: 4
 
 delete column one
+
+delete columns where:
+	not(grep { $_ ne "1" } @values)
 
 munge rows:
 	$row->{howmany} *= 2

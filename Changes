@@ -1,4 +1,9 @@
 Revision history for Querylet
+
+0.26    2004-09-23
+        TT2 is no longer strictly required
+        options and "set option" directive
+
 0.24    2004-09-21
         pass output filename to coderef output handler
         binmode output filehandle

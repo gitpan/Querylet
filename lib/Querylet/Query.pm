@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.24
+version 0.26
 
- $Id: Query.pm,v 1.14 2004/09/21 20:08:53 rjbs Exp $
+ $Id: Query.pm,v 1.21 2004/09/23 18:58:32 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.24';
+our $VERSION = '0.26';
 
 =head1 SYNOPSIS
 
@@ -121,7 +121,6 @@ when executing the query.
 
 sub bind_more {
 	my ($self, @parameters) = @_;
-	$self->{bind_parameters} = [] unless $self->{bind_parameters};
 	push @{$self->{bind_parameters}}, @parameters;
 }
 
@@ -131,6 +130,9 @@ This method sets the given variables, to be used when rendering the query.
 It also indicates that the query that was given is a template, and should be
 rendered.  (In other words, if this method is called at least once, even with
 an empty hashref, the query will be considered a template, and rendered.)
+
+Note that if query variables are set, but the template rendering engine can't
+be loaded, the program will die.
 
 =cut
 
@@ -178,7 +180,9 @@ sub run {
 
 	my $sth = $self->{dbh}->prepare($self->{query});
 	   $sth->execute(@{$self->{bind_parameters}});
+
 	$self->{columns} = $sth->{NAME};
+
 	$self->{results} = $sth->fetchall_arrayref({});
 }
 
@@ -238,6 +242,19 @@ sub set_columns {
 	$self->{columns} = shift;
 }
 
+=item C<< $q->option($option_name) >>
+
+This method returns the named option's value.  At present, this just retrieves
+a scratchpad entry.
+
+=cut
+
+sub option {
+	my ($self, $option_name) = @_;
+	return $self->scratchpad->{$option_name} unless @_ > 2;
+	return $self->scratchpad->{$option_name} = $_[2];
+}
+
 =item C<< $q->scratchpad >>
 
 This method returns a reference to a hash for general-purpose note-taking.
@@ -249,7 +266,7 @@ I'm tempted to warn you that it might go away, but I think it's unlikely.
 sub scratchpad {
 	my $self = shift;
 	$self->{scratchpad} = {} unless $self->{scratchpad};
-	return ($self->{scratchpad});
+	return $self->{scratchpad};
 }
 
 =item C<< $q->input_type($type) >>
@@ -263,10 +280,8 @@ my %input_handler;
 
 sub input_type {
 	my $self = shift;
-	return  $self->{input_type} unless @_;
-	return ($self->{input_type} = undef) unless (my $type = shift);
-
-	$self->{input_type} = $type;
+	return $self->{input_type} unless @_;
+	return $self->{input_type} = shift;
 }
 
 =item C<< $q->input($parameter) >>
@@ -332,10 +347,8 @@ my %output_handler;
 
 sub output_type {
 	my $self = shift;
-	return  $self->{output_type} unless @_;
-	return ($self->{output_type} = undef) unless (my $type = shift);
-
-	$self->{output_type} = $type;
+	return $self->{output_type} unless @_;
+	return $self->{output_type} = shift;
 }
 
 =item C<< $q->output >>
@@ -434,40 +447,59 @@ sub as_csv {
 	my $columns = $q->columns;
 	$csv = join(',', @$columns) . "\n";
 	foreach my $row (@$results) {
-		$csv .= join(',',(map { defined $_ ? $_ : '' } @$row{@$columns})) . "\n";
+		$csv .=
+			join(',',
+				map { (my $v=defined$_?$_:'')=~s/"/\\"/g; qq!"$v"! }
+				@$row{@$columns})
+			. "\n";
 	}
 
 	return $csv;
 }
 
-=item C<< as_html($q) >> 
+=item C<< as_template >>
 
-This is a built-in output handler.  It outputs the results of the query as a
-minimal HTML document.  The query results are put into an HTML table in a
-document with no other contents.
+This is the default, built-in output handler.  It outputs the results of the
+query by rendering a template using Template Toolkit.  If the option
+"template_file" is set, the file named in that option is used as the template.
+If no template_file is set, a built-in template is used, generating a simple
+HTML document.
 
-If a output filename was specified, the output is sent to that file (unless it
-exists).  Otherwise, it's printed standard output.
+This handler is by default registered to the types "template" and "html".
 
 =cut
 
-__PACKAGE__->register_output_handler(html  => \&as_html);
-sub as_html {
-	my $q = shift;
-	my $results = $q->results;
-	my $columns = $q->columns;
+__PACKAGE__->register_output_handler(template => \&as_template);
+__PACKAGE__->register_output_handler(html     => \&as_template);
+sub as_template {
+	my $query = shift;
+	my $output;
+	my $template = $query->option('template_file');
+	unless ($template) {
+		$template = \(<<'END')
+<html>
+  <head>
+    <title>results of query</title>
+  </head>
+  <body>
+    <table>
+      <tr>
+      [% FOREACH column = query.columns %]
+        <th>[%column%]</th>
+      [% END %]
+      </tr>
+      [% FOREACH row = query.results %]
+      <tr>[% FOREACH column = query.columns -%]<td>[%- row.$column -%]</td>[%- END %]</tr>[% END %]
+    </table>
+  </body>
+</html>
+END
+	}
 
-	my $html = "<html><head><title>results of query</title></head>";
-	   $html .= "<body><table><tr>";
-	   $html .= join('', map { "<th>$_</th>" } @$columns);
-	   $html .= "</tr>\n";
-
-		 $html .= "<tr>" . join('', map { "<td>$_</td>" } @$_{@$columns}). "</tr>\n"
-	     foreach (@$results);
-
-	   $html .= "</table></body></html>\n";
-
-	return $html;
+	require Template;
+	my $tt = new Template({ RELATIVE => 1});
+	$tt->process($template, { query => $query }, \$output);
+	return $output;
 }
 
 =item C<< from_term($q, $parameter) >>

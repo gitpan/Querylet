@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.24
+version 0.26
 
- $Id: Querylet.pm,v 1.12 2004/09/21 20:08:53 rjbs Exp $
+ $Id: Querylet.pm,v 1.16 2004/09/23 19:57:37 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.24';
+our $VERSION = '0.26';
 
 =head1 SYNOPSIS
 
@@ -97,11 +97,13 @@ interactively.  If this doesn't make sense, an error should be thrown.
    JOIN   orders ON customer.customerid = orders.customerid
    GROUP BY customer.customerid, lastname, firstname
 
-This directive provides the query to be run by Querylet.  The query is actually
-a template, and will be rendered before running if (and only if) the C<munge
-query> directive occurs in the querylet.  The query can include bind parameters
--- that is, you can put a ? in place of a value, and later use C<query
-parameter> to replace the value.  (See below.)
+This directive provides the query to be run by Querylet.  The query can
+actually be a template, and will be rendered before running if (and only if)
+the C<munge query> directive occurs in the querylet.  The query can include
+bind parameters -- that is, you can put a ? in place of a value, and later use
+C<query parameter> to replace the value.  (See below.)
+
+It is important that every selected column have a name or alias.
 
 =item C<query parameter: BLOCK>
 
@@ -113,6 +115,11 @@ This directive sets the value for the next bind parameter.  You should have one
 The directive informs Querylet that the given query is a template and must be
 rendered.  The BLOCK must return a list of parameter names and values, which
 will be passed to the template toolkit to render the query.
+
+=item C<set option NAME: VALUE>
+
+This sets the name option to the given value, and is used to set up options for
+plugins and I/O handlers.
 
 =item C<munge rows: BLOCK>
 
@@ -239,6 +246,16 @@ sub set_query_vars { shift; <<""
 }
 
 }
+
+=item C<< Querylet->set_option($option, $value) >>
+
+This method returns Perl code to set the named query option to the given value.
+At present, this works by using the Querylet::Query scratchpad, but a more
+sophisticated method will probably be implemented.  Someday.
+
+=cut
+
+sub set_option  { shift; "\$q->option(q{$_[0]}, q{$_[1]});\n" }
 
 =item C<< Querylet->input($parameter) >>
 
@@ -456,6 +473,10 @@ FILTER {
 	s/^ munge\s+query:\s*(.+?)
 	    $to_next
 	 /  $class->set_query_vars($1);
+	 /egmsx;
+
+	s/^ set\s+option\s+([\/A-Za-z0-9_]+):\s*([^\n]+)
+	 /  $class->set_option($1,$2);
 	 /egmsx;
 
 	s/^ input:\s*([^\n]+)

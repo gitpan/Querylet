@@ -11,13 +11,13 @@ Querylet::Input - generic input handler for Querlet::Query
 
 =head1 VERSION
 
-version 0.24
+version 0.26
 
- $Id: Input.pm,v 1.3 2004/09/21 20:08:53 rjbs Exp $
+ $Id: Input.pm,v 1.4 2004/09/23 19:57:37 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.24';
+our $VERSION = '0.26';
 
 =head1 SYNOPSIS
 
