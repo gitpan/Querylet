@@ -9,7 +9,10 @@ WriteMakefile(
     ABSTRACT_FROM       => 'lib/Querylet.pm',
     PL_FILES            => {},
     PREREQ_PM => {
-        'Test::More' => 0,
+        'DBI'            => 1,
+        'Filter::Simple' => 0,
+        'Template'       => 2,
+        'Test::More'     => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Querylet-*' },

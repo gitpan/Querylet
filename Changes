@@ -1,5 +1,9 @@
 Revision history for Querylet
 
-0.01    2004-09-16
+0.12    2004-09-17
+ * a few errors in docs fixed
+ * default handling of "database: " is no longer useless
+ * tests added using SQLite (coverage still low)
+0.10    2004-09-16
  * initial release!
  * testing woefully inadequate!

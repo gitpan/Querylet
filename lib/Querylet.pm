@@ -10,17 +10,19 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.10
+version 0.12
 
- $Id: Querylet.pm,v 1.2 2004/09/16 19:26:04 rjbs Exp $
+ $Id: Querylet.pm,v 1.5 2004/09/17 13:12:49 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.10';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
- use Querylet::Wafers; # a subclass of Querylet
+ use Querylet;
+
+ database: dbi:SQLite:dbname=wafers.db
 
  query:
    SELECT wafer_id, material, diameter, failurecode
@@ -81,7 +83,7 @@ you're using.
 This directive names a format to be used by the output renderer.  The default
 value is "csv".
 
-=item C<output filename: VALUE>
+=item C<output file: VALUE>
 
 This directive names a file to which the rendstarbucks density calculatorered output should be written.  If
 not given, renderers will present output to the terminal, or otherwise
@@ -134,6 +136,10 @@ column value is available as C<$value>.
 
 This directive deletes the named column from the result set.
 
+=item C<no output>
+
+This directive instructs the Querylet not to output its results.
+
 =back
 
 =head1 IMPLEMENTATION
@@ -166,11 +172,17 @@ my $q ||= new Querylet::Query;
 =item C<< Querylet->set_dbh($text) >>
 
 This method returns Perl code to set the database handle to be used by the
-Query object.
+Query object.  The default implementation will attempt to use $text as a DBI
+connect string to create a dbh.
 
 =cut
 
-sub set_dbh    { shift; "\$q->set_dbh('$_[0]');\n"; }
+sub set_dbh    { shift; <<""
+use DBI;
+my \$dbh = DBI->connect(q|$_[0]|);
+\$q->set_dbh(\$dbh);
+
+}
 
 =item C<< Querylet->set_query($sql_template) >>
 
@@ -269,12 +281,12 @@ sub add_col  { shift; <<"";
 if (exists \$q->results->[0]->{$_[0]}) {
 	warn "column $_[0] already exists; ignoring directive\n";
 } else { 
-	push \@{\$q->{columns}}, '$_[0]';
 	foreach my \$row (\@{\$q->results}) {
 		for my \$value (\$row->{$_[0]}) {
 			$_[1]
 		}
 	}
+	push \@{\$q->{columns}}, '$_[0]';
 }
 
 }
@@ -286,10 +298,10 @@ This method returns Perl code, deleting the named column from the result set.
 =cut
 
 sub delete_col  { shift; <<"";
-\$q->{columns} = [ grep { \$_ ne '$_[0]' } \@{\$q->{columns}} ];
 foreach my \$row (\@{\$q->results}) {
 	delete \$row->{$_[0]};
 }
+\$q->{columns} = [ grep { \$_ ne '$_[0]' } \@{\$q->{columns}} ];
 
 }
 
@@ -351,7 +363,7 @@ FILTER {
 	s/\r//g;
   s/\A/once('init',init)/egms;
 
-	s/^ database:\s*(\w+)$
+	s/^ database:\s*([^\n]+)
 	 /  $class->set_dbh($1)
 	 /egmsx;
 
@@ -402,10 +414,20 @@ FILTER {
 	 /  $class->set_filename($1);
 	 /egmsx;
 
-	s/\Z/output/e;
+	s/^ no\s+output$
+	 /  once('output', '')
+	 /egmsx;
+
+	s/\Z
+	 /once('output',output)
+	 /egmsx;
 }
 
 =back
+
+=head1 SEE ALSO
+
+L<Querylet::Query>
 
 =head1 AUTHOR
 

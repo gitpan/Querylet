@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.10
+version 0.12
 
- $Id: Query.pm,v 1.2 2004/09/16 19:26:04 rjbs Exp $
+ $Id: Query.pm,v 1.4 2004/09/17 13:04:09 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.10';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
@@ -260,8 +260,6 @@ sub register_handler {
 	$output_handler{$type} = $handler;
 }
 
-__PACKAGE__->register_handler(html  => \&as_html);
-
 =item C<< as_csv($q) >>
 
 This is the default, built-in handler.  It outputs the results of the query as
@@ -277,10 +275,11 @@ __PACKAGE__->register_handler(csv   => \&as_csv);
 sub as_csv {
 	my $query = shift;
 	my $csv;
-	my @columns = @{$query->{columns}};
-	$csv = join(',', @columns) . "\n";
-	foreach my $row (@{$query->results}) {
-		$csv .= join(',',(map { defined $_ ? $_ : '' } @$row{@columns})) . "\n";
+	my $results = $query->results;
+	my $columns = $query->{columns};
+	$csv = join(',', @$columns) . "\n";
+	foreach my $row (@$results) {
+		$csv .= join(',',(map { defined $_ ? $_ : '' } @$row{@$columns})) . "\n";
 	}
 
 	my $to;
@@ -303,19 +302,21 @@ exists).  Otherwise, it's printed standard output.
 
 =cut
 
+__PACKAGE__->register_handler(html  => \&as_html);
 sub as_html {
 	my $query = shift;
-	my @columns = @{$query->{columns}};
+	my $results = $query->results;
+	my $columns = $query->{columns};
 
 	my $html = "<html><head><title>results of query</title></head>";
 	   $html .= "<body><table><tr>";
-	   $html .= join('', map { "<th>$_</th>" } @columns);
+	   $html .= join('', map { "<th>$_</th>" } @$columns);
 	   $html .= "</tr>\n";
 
-		 $html .= "<tr>" . join('', map { "<td>$_</td>" } @$_{@columns}). "</tr>\n"
-	     foreach (@{$query->results});
+		 $html .= "<tr>" . join('', map { "<td>$_</td>" } @$_{@$columns}). "</tr>\n"
+	     foreach (@$results);
 
-	   $html .= "</table></body></html>";
+	   $html .= "</table></body></html>\n";
 
 	my $to;
 	if ($query->{filename}) {
