@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.14
+version 0.16
 
- $Id: Query.pm,v 1.7 2004/09/17 23:29:28 rjbs Exp $
+ $Id: Query.pm,v 1.8 2004/09/18 19:44:41 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.14';
+our $VERSION = '0.16';
 
 =head1 SYNOPSIS
 

@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.14
+version 0.16
 
- $Id: Querylet.pm,v 1.8 2004/09/17 23:29:28 rjbs Exp $
+ $Id: Querylet.pm,v 1.9 2004/09/18 19:44:41 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.14';
+our $VERSION = '0.16';
 
 =head1 SYNOPSIS
 
@@ -63,7 +63,7 @@ programs.  The syntax described here is the "intended" and basic syntax, but
 savvy Perl hackers will realize that horrible things can be done by
 interspersing "real" Perl with querylet directives.
 
-"I am afraid I really cannot suggest that course of action, sir." -- Jeeves
+I am afraid I really cannot suggest that course of action, sir.
 
 =head2 DIRECTIVES
 

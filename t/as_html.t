@@ -1,6 +1,6 @@
 use Test::More;
 
-eval { require DBD::SQLite };
+eval 'use DBD::SQLite 1.0 ()';
 plan skip_all => "DBD::SQLite required to run test querylet" if $@;
 
 plan tests => 1;

@@ -1,6 +1,9 @@
 Revision history for Querylet
 
-0.20    2004-09-17 19:30
+0.16    2004-09-18 15:45
+ * added output handler base class (and tests)
+ * updated tests to require DBD::SQLite 1+
+0.14    2004-09-17 19:30
  * rewrote output routines
  * 100% coverage - lots of simple new tests
  * coderef as output type!
