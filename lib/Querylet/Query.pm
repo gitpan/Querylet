@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.28
+version 0.32
 
- $Id: Query.pm,v 1.24 2004/12/16 16:07:04 rjbs Exp $
+ $Id: Query.pm,v 1.25 2005/02/04 18:26:51 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.28';
+our $VERSION = '0.32';
 
 =head1 SYNOPSIS
 
@@ -71,8 +71,8 @@ This creates and returns a new Querylet::Query.
 sub new {
 	bless {
 		bind_parameters => [],
-		output_type     => 'csv',
-		input_type => 'term'
+		output_type => 'csv',
+		input_type  => 'term'
 	} => (shift);
 }
 
@@ -361,10 +361,26 @@ unassigns the currently assigned filename.
 
 sub output_filename {
 	my $self = shift;
-	return  $self->{output_filename} unless @_;
-	return ($self->{output_filename} = undef) unless (my $filename = shift);
+	return $self->{output_filename} unless @_;
 
-	$self->{output_filename} = $filename;
+	my $filename = shift;
+
+	$self->write_type($filename ? 'file' : undef);
+	return $self->{output_filename} = $filename;
+}
+
+=item C<< $q->write_type($type) >>
+
+This method sets or retrieves the write-out method for the query.
+
+=cut
+
+my %write_handler;
+
+sub write_type {
+	my $self = shift;
+	return $self->{write_type} unless @_;
+	return $self->{write_type} = shift;
 }
 
 =item C<< $q->output_type($type) >>
@@ -407,6 +423,26 @@ sub output {
 	}
 }
 
+=item C<< $q->write >>
+
+This method tells the Query to send its formatted output to the writing handler
+and return them.
+
+=cut
+
+sub write {
+	my ($self) = @_;
+
+	$self->write_type('stdout') unless $self->write_type;
+
+	unless ($write_handler{$self->write_type}) {
+		warn "unknown write type: ", $self->write_type," \n";
+		return;
+	} else {
+		$write_handler{$self->write_type}->($self);
+	}
+}
+
 =item C<< $q->write_output >>
 
 This method tells the Query to write the query output.  If no filename has been
@@ -422,22 +458,11 @@ sub write_output {
 	my $output = $self->output;
 
 	if (ref $output eq 'CODE') {
+		warn "using coderef output, but write_type set" if $self->write_type;
 		$output->($self->output_filename);
 	} else {
-		if ($self->output_filename) {
-			if (open(my $output_file, '>', $self->output_filename)) {
-				binmode $output_file;
-				print $output_file $self->output;
-				close $output_file;
-			} else {
-				warn "can't open $self->{output_filename} for output";
-				return;
-			}
-		} else {
-			print $self->output || '';
-		}
+		$self->write($self);
 	}
-	return $self->output;
 }
 
 =item C<< Querylet::Query->register_output_handler($type => \&handler) >>
@@ -530,6 +555,55 @@ END
 	my $tt = new Template({ RELATIVE => 1});
 	$tt->process($template, { query => $query }, \$output);
 	return $output;
+}
+
+=item C<< Querylet::Query->register_write_handler($type => \&handler) >>
+
+This method registers a write handler routine for the given type.
+
+If a type is registered that already has a handler, the old handler is quietly
+replaced.
+
+=cut
+
+sub register_write_handler {
+	shift;
+	my ($type, $handler) = @_;
+	$write_handler{$type} = $handler;
+}
+
+=item C<< to_file >>
+
+This write handler sends the output to a file on the disk.
+
+=cut
+
+__PACKAGE__->register_write_handler(file => \&to_file);
+sub to_file {
+	my ($query) = @_;
+
+	if ($query->output_filename) {
+		if (open(my $output_file, '>', $query->output_filename)) {
+			binmode $output_file;
+			print $output_file $query->output;
+			close $output_file;
+		} else {
+			warn "can't open " . $query->output_filename . " for output";
+			return;
+		}
+	}
+}
+
+=item C<< to_stdout >>
+
+This write handler sends the output to the currently selected output stream.
+
+=cut
+
+__PACKAGE__->register_write_handler(stdout => \&to_stdout);
+sub to_stdout {
+	my ($query) = @_;
+	print $query->output || '';
 }
 
 =item C<< from_term($q, $parameter) >>

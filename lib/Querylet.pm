@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.30
+version 0.32
 
- $Id: Querylet.pm,v 1.19 2005/01/12 17:01:26 rjbs Exp $
+ $Id: Querylet.pm,v 1.20 2005/02/04 18:26:51 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.30';
+our $VERSION = '0.32';
 
 =head1 SYNOPSIS
 
@@ -85,9 +85,8 @@ value is "csv".
 
 =item C<output file: VALUE>
 
-This directive names a file to which the rendstarbucks density calculatorered
-output should be written.  If not given, renderers will present output to the
-terminal, or otherwise
+This directive names a file to which the rendered output should be written.  If
+not given, renderers will present output to the terminal, or otherwise
 interactively.  If this doesn't make sense, an error should be thrown.
 
 =item C<query: BLOCK>
@@ -287,6 +286,14 @@ This method returns Perl code to set the output filename.
 =cut
 
 sub set_output_filename { shift; "\$q->output_filename(q{$_[0]});\n"; }
+
+=item C<< Querylet->set_output_method($type) >>
+
+This method returns Perl code to set the output method.
+
+=cut
+
+sub set_output_method { shift; "\$q->write_type(q{$_[0]});\n"; }
 
 =item C<< Querylet->set_output_type($type) >>
 
@@ -544,6 +551,10 @@ FILTER {
 
 	s/^ output\s+format:\s+(\w+)$
 	 /  $class->set_output_type($1);
+	 /egmsx;
+
+	s/^ output\s+method:\s+(\w+)$
+	 /  $class->set_output_method($1);
 	 /egmsx;
 
 	s/^ output\s+file:\s+([_.A-Za-z0-9]+)$

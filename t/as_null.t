@@ -33,5 +33,5 @@ no output
 no Querylet;
 
 ok(1, "made it here alive");
-is( $q->write_output, undef, "no output (null method)" );
+is( $q->output, undef, "no output (null method)" );
 

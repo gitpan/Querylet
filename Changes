@@ -1,5 +1,8 @@
 Revision history for Querylet
 
+0.32    2005-02-04
+        added "write handlers" to change how rendered output is written
+
 0.30    2005-01-12
         options are now block items with lead/trail space trimmed
 
