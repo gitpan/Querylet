@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.28
+version 0.30
 
- $Id: Querylet.pm,v 1.18 2004/12/16 16:07:04 rjbs Exp $
+ $Id: Querylet.pm,v 1.19 2005/01/12 17:01:26 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.28';
+our $VERSION = '0.30';
 
 =head1 SYNOPSIS
 
@@ -117,10 +117,11 @@ The directive informs Querylet that the given query is a template and must be
 rendered.  The BLOCK must return a list of parameter names and values, which
 will be passed to the template toolkit to render the query.
 
-=item C<set option NAME: VALUE>
+=item C<set option NAME: BLOCK>
 
 This sets the name option to the given value, and is used to set up options for
-plugins and I/O handlers.
+plugins and I/O handlers.  Leading and trailing space is stripped from the
+block.
 
 =item C<munge rows: BLOCK>
 
@@ -256,7 +257,11 @@ sophisticated method will probably be implemented.  Someday.
 
 =cut
 
-sub set_option  { shift; "\$q->option(q{$_[0]}, q{$_[1]});\n" }
+sub set_option  { shift;
+	my ($option, $value) = @_;
+	$value =~ s/(^\s+|\s+$)//g;
+	"\$q->option(q{$option}, q{$value});\n"
+}
 
 =item C<< Querylet->input($parameter) >>
 
@@ -485,7 +490,8 @@ FILTER {
 	 /  $class->set_query_vars($1);
 	 /egmsx;
 
-	s/^ set\s+option\s+([\/A-Za-z0-9_]+):\s*([^\n]+)
+	s/^ set\s+option\s+([\/A-Za-z0-9_]+):\s*(.+?)
+			$to_next
 	 /  $class->set_option($1,$2);
 	 /egmsx;
 

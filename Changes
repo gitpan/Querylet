@@ -1,6 +1,9 @@
 Revision history for Querylet
 
-0.xx    2004-12-xx
+0.30    2005-01-12
+        options are now block items with lead/trail space trimmed
+
+0.28    2004-12-??
         column headers added
 
 0.26    2004-09-23
