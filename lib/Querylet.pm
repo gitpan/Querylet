@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.26
+version 0.28
 
- $Id: Querylet.pm,v 1.16 2004/09/23 19:57:37 rjbs Exp $
+ $Id: Querylet.pm,v 1.18 2004/12/16 16:07:04 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.26';
+our $VERSION = '0.28';
 
 =head1 SYNOPSIS
 
@@ -85,8 +85,9 @@ value is "csv".
 
 =item C<output file: VALUE>
 
-This directive names a file to which the rendstarbucks density calculatorered output should be written.  If
-not given, renderers will present output to the terminal, or otherwise
+This directive names a file to which the rendstarbucks density calculatorered
+output should be written.  If not given, renderers will present output to the
+terminal, or otherwise
 interactively.  If this doesn't make sense, an error should be thrown.
 
 =item C<query: BLOCK>
@@ -398,6 +399,15 @@ for my \$column (\@{\$q->columns}) {
 
 }
 
+=item C<< Querylet->column_headers($text) >>
+
+This method returns Perl code to set up column headers.  The C<$text> should be
+Perl code describing a hash of column-header pairs.
+
+=cut
+
+sub column_headers { my $class = shift; "\$q->set_headers({ $_[0] });" }
+
 =item C<< Querylet->munge_values($text) >>
 
 This method returns Perl code to perform the code in C<$text> on every value in
@@ -519,6 +529,11 @@ FILTER {
 	s/^ delete\s+columns\s+where:\s*(.+?)
 	    $to_next
 	 /  $class->delete_cols($1);
+	 /egmsx;
+
+	s/^ column\s+headers?:\s*(.+?)
+	    $to_next
+	 /  $class->column_headers($1);
 	 /egmsx;
 
 	s/^ output\s+format:\s+(\w+)$

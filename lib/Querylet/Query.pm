@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.26
+version 0.28
 
- $Id: Query.pm,v 1.21 2004/09/23 18:58:32 rjbs Exp $
+ $Id: Query.pm,v 1.24 2004/12/16 16:07:04 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.26';
+our $VERSION = '0.28';
 
 =head1 SYNOPSIS
 
@@ -242,6 +242,36 @@ sub set_columns {
 	$self->{columns} = shift;
 }
 
+=item C<< $q->header( $column ) >>
+
+This method returns the header name for the given column, or the column name,
+if none is defined.
+
+=cut
+
+sub header {
+	my $self   = shift;
+	my $column = shift;
+	return exists $self->{headers}{$column}
+		? $self->{headers}{$column}
+		: $column;
+}
+
+=item C<< $q->set_headers( \%headers ) >>
+
+This method sets up header names for columns.  It's passed a list of
+column-header pairs, which it stores for lookup with the C<header> method.
+
+=cut
+
+sub set_headers {
+	my $self    = shift;
+	my $headers = shift;
+	while (my ($column, $header) = each %$headers) {
+		$self->{headers}{$column} = $header;
+	}
+}
+
 =item C<< $q->option($option_name) >>
 
 This method returns the named option's value.  At present, this just retrieves
@@ -445,13 +475,13 @@ sub as_csv {
 	my $csv;
 	my $results = $q->results;
 	my $columns = $q->columns;
-	$csv = join(',', @$columns) . "\n";
+	$csv = join(',', map { $q->header($_) } @$columns) . "\n";
 	foreach my $row (@$results) {
 		$csv .=
 			join(',',
 				map { (my $v=defined$_?$_:'')=~s/"/\\"/g; qq!"$v"! }
-				@$row{@$columns})
-			. "\n";
+				@$row{@$columns}
+			) . "\n";
 	}
 
 	return $csv;
@@ -485,7 +515,7 @@ sub as_template {
     <table>
       <tr>
       [% FOREACH column = query.columns %]
-        <th>[%column%]</th>
+        <th>[% query.header(column) %]</th>
       [% END %]
       </tr>
       [% FOREACH row = query.results %]
