@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.12
+version 0.14
 
- $Id: Querylet.pm,v 1.5 2004/09/17 13:12:49 rjbs Exp $
+ $Id: Querylet.pm,v 1.8 2004/09/17 23:29:28 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.12';
+our $VERSION = '0.14';
 
 =head1 SYNOPSIS
 
@@ -208,7 +208,7 @@ This method returns Perl code to set the output filename.
 
 =cut
 
-sub set_output_filename { shift; "\$q->set_output_filename(q{$_[0]});\n"; }
+sub set_output_filename { shift; "\$q->output_filename(q{$_[0]});\n"; }
 
 =item C<< Querylet->set_output_type($type) >>
 
@@ -216,7 +216,7 @@ This method returns Perl code to set the output format.
 
 =cut
 
-sub set_output_type { shift; "\$q->set_output_type(q{$_[0]});\n"; }
+sub set_output_type { shift; "\$q->output_type(q{$_[0]});\n"; }
 
 =item C<< Querylet->munge_rows($text) >>
 
@@ -281,12 +281,12 @@ sub add_col  { shift; <<"";
 if (exists \$q->results->[0]->{$_[0]}) {
 	warn "column $_[0] already exists; ignoring directive\n";
 } else { 
+	push \@{\$q->columns}, '$_[0]';
 	foreach my \$row (\@{\$q->results}) {
 		for my \$value (\$row->{$_[0]}) {
 			$_[1]
 		}
 	}
-	push \@{\$q->{columns}}, '$_[0]';
 }
 
 }
@@ -298,10 +298,10 @@ This method returns Perl code, deleting the named column from the result set.
 =cut
 
 sub delete_col  { shift; <<"";
+\$q->set_columns( [ grep { \$_ ne '$_[0]' } \@{\$q->columns} ] );
 foreach my \$row (\@{\$q->results}) {
 	delete \$row->{$_[0]};
 }
-\$q->{columns} = [ grep { \$_ ne '$_[0]' } \@{\$q->{columns}} ];
 
 }
 
@@ -329,7 +329,7 @@ requested format, to the requested destination.
 =cut
 
 sub output { shift; <<''
-$q->output;
+$q->write_output;
 
 }
 
@@ -410,8 +410,8 @@ FILTER {
 	 /  $class->set_output_type($1);
 	 /egmsx;
 
-	s/^ output\s+file:\s+([_A-Za-z0-9.]+)$
-	 /  $class->set_filename($1);
+	s/^ output\s+file:\s+([_.A-Za-z0-9]+)$
+	 /  $class->set_output_filename($1);
 	 /egmsx;
 
 	s/^ no\s+output$

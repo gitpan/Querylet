@@ -1,6 +1,10 @@
 Revision history for Querylet
 
-0.12    2004-09-17
+0.20    2004-09-17 19:30
+ * rewrote output routines
+ * 100% coverage - lots of simple new tests
+ * coderef as output type!
+0.12    2004-09-17 08:00
  * a few errors in docs fixed
  * default handling of "database: " is no longer useless
  * tests added using SQLite (coverage still low)

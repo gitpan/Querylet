@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.12
+version 0.14
 
- $Id: Query.pm,v 1.4 2004/09/17 13:04:09 rjbs Exp $
+ $Id: Query.pm,v 1.7 2004/09/17 23:29:28 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.12';
+our $VERSION = '0.14';
 
 =head1 SYNOPSIS
 
@@ -43,7 +43,7 @@ our $VERSION = '0.12';
 
  $q->run;
 
- $q->set_output_type('html');
+ $q->output_type('html');
 
  $q->output;
 
@@ -179,7 +179,34 @@ sub set_results {
 	$self->{results} = shift;
 }
 
-=item C<< $q->set_output_filename($filename) >>
+=item C<< $q->columns >>
+
+This method returns the column names (as an arrayref) for the query's results.
+The query will first be run (by calling C<run>) if needed.
+
+=cut
+
+sub columns {
+	my $self = shift;
+	return $self->{columns} if $self->{columns};
+	$self->run;
+	return $self->{columns};
+}
+
+=item C<< $q->set_columns( \@new_columns ) >>
+
+This method replaces the list of column names for the current query result.  It
+does not call the columns method, so if the query has not been run, it will not
+be run by this method.
+
+=cut
+
+sub set_columns {
+	my $self = shift;
+	$self->{columns} = shift;
+}
+
+=item C<< $q->output_filename($filename) >>
 
 This method sets a filename to which output should be directed.
 
@@ -188,59 +215,89 @@ unassigns the currently assigned filename.
 
 =cut
 
-sub set_output_filename {
+sub output_filename {
 	my $self = shift;
 	return  $self->{output_filename} unless @_;
 	return ($self->{output_filename} = undef) unless (my $filename = shift);
 
-	if (-f $filename) {
-		warn "filename already exists; aborting\n";
-		exit;
-	} else {
-		$self->{output_filename} = $filename;
-	}
+	$self->{output_filename} = $filename;
 }
 
-=item C<< $q->set_output_type($type) >>
+=item C<< $q->output_type($type) >>
 
-This method sets the format of the output to be generated.  If an unregistered
-format is requested, the querylet will complain and abort execution.
+This method sets or retrieves the format of the output to be generated.
 
 =cut
 
 my %output_handler;
 
-sub set_output_type {
+sub output_type {
 	my $self = shift;
-	my $output_as = shift;
-	unless ($output_handler{$output_as}) {
-		warn "output type '$output_as' unknown; aborting\n";
-		exit;
-	} else {
-		$self->{output_as} = $output_as;
-	}
+	return  $self->{output_as} unless @_;
+	return ($self->{output_as} = undef) unless (my $type = shift);
+
+	$self->{output_as} = $type;
 }
 
 =item C<< $q->output >>
 
 This method tells the Query to send the current results to the proper output
-handler.
+handler and return them.  If the outputs have already been generated, they are
+not re-generated.
 
 =cut
 
 sub output {
 	my $self = shift;
-	   $self->{output_as} ||= 'csv';
 
-	unless ($output_handler{$self->{output_as}}) {
-		warn "unknown output type: $self->{output_as}\n";
+	return $self->{output} if exists $self->{output};
+
+	$self->output_type('csv') unless $self->output_type;
+
+	unless ($output_handler{$self->output_type}) {
+		warn "unknown output type: ", $self->output_type," \n";
 		return;
 	} else {
-		$output_handler{$self->{output_as}}->($self);
+		$self->{output} = $output_handler{$self->output_type}->($self);
+		unless ($self->{output}) {
+			warn "no output received from output handler!\n";
+			return;
+		}
+		return $self->{output};
 	}
 }
 
-## BEGIN AWFUL OUTPUT STUFF
+=item C<< $q->write_output >>
+
+This method tells the Query to write the query output.  If no filename has been
+set for output, the results are just printed.
+
+If the result of the output method is a coderef, the coderef will be evaluated
+and nothing will be printed.
+
+=cut
+
+sub write_output {
+	my ($self) = @_;
+	my $output = $self->output;
+
+	if (ref $output eq 'CODE') {
+		$output->();
+	} else {
+		if ($self->output_filename) {
+			if (open(my $output_file, '>', $self->output_filename)) {
+				print $output_file $self->output;
+				close $output_file;
+			} else {
+				warn "can't open $self->{output_filename} for output";
+				return;
+			}
+		} else {
+			print $self->output || '';
+		}
+	}
+	return $self->output;
+}
 
 =item C<< Querylet::Query->register_handler($type => \&handler) >>
 
@@ -273,22 +330,16 @@ exists).  Otherwise, it's printed standard output.
 
 __PACKAGE__->register_handler(csv   => \&as_csv);
 sub as_csv {
-	my $query = shift;
+	my $q = shift;
 	my $csv;
-	my $results = $query->results;
-	my $columns = $query->{columns};
+	my $results = $q->results;
+	my $columns = $q->columns;
 	$csv = join(',', @$columns) . "\n";
 	foreach my $row (@$results) {
 		$csv .= join(',',(map { defined $_ ? $_ : '' } @$row{@$columns})) . "\n";
 	}
 
-	my $to;
-	if ($query->{filename}) {
-		open $to, '>', $query->{filename};
-	} else {
-		$to = \*STDOUT;
-	}
-	print $to $csv;
+	return $csv;
 }
 
 =item C<< as_html($q) >> 
@@ -304,9 +355,9 @@ exists).  Otherwise, it's printed standard output.
 
 __PACKAGE__->register_handler(html  => \&as_html);
 sub as_html {
-	my $query = shift;
-	my $results = $query->results;
-	my $columns = $query->{columns};
+	my $q = shift;
+	my $results = $q->results;
+	my $columns = $q->columns;
 
 	my $html = "<html><head><title>results of query</title></head>";
 	   $html .= "<body><table><tr>";
@@ -318,13 +369,7 @@ sub as_html {
 
 	   $html .= "</table></body></html>\n";
 
-	my $to;
-	if ($query->{filename}) {
-		open $to, '>', $query->{filename};
-	} else {
-		$to = \*STDOUT;
-	}
-	print $to $html;
+	return $html;
 }
 
 =back
