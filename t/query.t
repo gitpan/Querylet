@@ -12,7 +12,7 @@ is($q->output_filename,            'xyz.txt', "filename retrieved");
 is($q->output_filename(undef),         undef, "filename unset");
 is($q->output_filename,                undef, "no output filename defined");
 
-is($q->output_type,                undef, "no output format defined");
+is($q->output_type,                'csv', "default output format");
 is($q->output_type('xyz'),         'xyz', "format set properly");
 is($q->output_type,                'xyz', "format retrieved");
 is($q->output_type(undef),         undef, "format unset");

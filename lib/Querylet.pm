@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.16
+version 0.20
 
- $Id: Querylet.pm,v 1.9 2004/09/18 19:44:41 rjbs Exp $
+ $Id: Querylet.pm,v 1.10 2004/09/19 18:18:35 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.16';
+our $VERSION = '0.20';
 
 =head1 SYNOPSIS
 
@@ -114,6 +114,9 @@ is made available to the block as C<$row>, a hashref.
 
 =item C<delete rows where: BLOCK>
 
+This directive will cause any row to be deleted where the given condition
+evaluates true.  In that evaluation, C<$row> is available.
+
 =item C<munge all values: BLOCK>
 
 This directive causes the given block of code to be run on every value of every
@@ -135,6 +138,12 @@ column value is available as C<$value>.
 =item C<delete column NAME>
 
 This directive deletes the named column from the result set.
+
+=item C<delete columns where: BLOCK>
+
+This directive will cause any column to be deleted where the given condition
+evaluates true.  In that evaluation, C<$column> is available, containing the
+column name; C<@values> contains all the values for that column.
 
 =item C<no output>
 
@@ -200,7 +209,30 @@ render the SQL query template.
 
 =cut
 
-sub set_query_vars { shift; "\$q->set_query_vars({$_[0]});\n"; }
+sub set_query_vars { shift; <<""
+{
+	my \$input = \$q->{input};
+	\$q->set_query_vars({$_[0]});
+}
+
+}
+
+=item C<< Querylet->input($parameter) >>
+
+This method returns code to instruct the Query object to get an input parameter
+with the given name.
+
+=cut
+
+sub input { shift; "\$q->input(q{$_[0]});\n"; }
+
+=item C<< Querylet->set_input_type($type) >>
+
+This method returns Perl code to set the input format.
+
+=cut
+
+sub set_input_type { shift; "\$q->input_type(q{$_[0]});\n"; }
 
 =item C<< Querylet->set_output_filename($filename) >>
 
@@ -298,10 +330,31 @@ This method returns Perl code, deleting the named column from the result set.
 =cut
 
 sub delete_col  { shift; <<"";
-\$q->set_columns( [ grep { \$_ ne '$_[0]' } \@{\$q->columns} ] );
+\$q->set_columns( [ grep { \$_ ne "$_[0]" } \@{\$q->columns} ] );
 foreach my \$row (\@{\$q->results}) {
 	delete \$row->{$_[0]};
 }
+
+}
+
+=item C<< Querylet->delete_cols($text) >>
+
+This method returns Perl code to delete from the result set any row for which
+C<$text> evaluates true.  The code iterates over every column in the result
+set, creating C<@values>, which contains a copy of all the values in that
+columns, and C<$column>, which contains the name of the current column.
+
+=cut
+
+sub delete_cols { my $class = shift; qq|
+for my \$column (\@{\$q->columns}) {
+	my \@values;
+	push \@values, \$_->{\$column} for \@{\$q->results};
+	if ($_[0]) {
+| .	 $class->delete_col('$column') . qq|
+	}
+}
+|
 
 }
 
@@ -377,6 +430,14 @@ FILTER {
 	 /  $class->set_query_vars($1);
 	 /egmsx;
 
+	s/^ input:\s*([^\n]+)
+	 /  $class->input($1)
+	 /egmsx;
+
+	s/^ input\s+type:\s+(\w+)$
+	 /  $class->set_input_type($1);
+	 /egmsx;
+
 	s/^ munge\s+rows:\s*(.+?)
 	    $to_next
 	 /  $class->munge_rows($1);
@@ -404,6 +465,11 @@ FILTER {
 
 	s/^ delete\s+column\s+(\w+)$
 	 /  $class->delete_col($1);
+	 /egmsx;
+
+	s/^ delete\s+columns\s+where:\s*(.+?)
+	    $to_next
+	 /  $class->delete_cols($1);
 	 /egmsx;
 
 	s/^ output\s+format:\s+(\w+)$

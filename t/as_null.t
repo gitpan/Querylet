@@ -8,7 +8,7 @@ plan tests => 2;
 use Querylet;
 
 sub null {}
-Querylet::Query->register_handler(null => \&null);
+Querylet::Query->register_output_handler(null => \&null);
 
 database: dbi:SQLite:dbname=./t/wafers.db
 

@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.16
+version 0.20
 
- $Id: Query.pm,v 1.8 2004/09/18 19:44:41 rjbs Exp $
+ $Id: Query.pm,v 1.10 2004/09/19 20:58:12 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.16';
+our $VERSION = '0.20';
 
 =head1 SYNOPSIS
 
@@ -66,7 +66,7 @@ This creates and returns a new Querylet::Query.
 
 =cut
 
-sub new { bless {} => (shift); }
+sub new { bless { output_type => 'csv', input_type => 'term' } => (shift); }
 
 =item C<< $q->set_dbh($dbh) >>
 
@@ -206,6 +206,73 @@ sub set_columns {
 	$self->{columns} = shift;
 }
 
+=item C<< $q->scratchpad >>
+
+This method returns a reference to a hash for general-purpose note-taking.
+I've put this here for really simple, mediocre communication between handlers.
+I'm tempted to warn you that it might go away, but I think it's unlikely.  
+
+=cut
+
+sub scratchpad {
+	my $self = shift;
+	$self->{scratchpad} = {} unless $self->{scratchpad};
+	return ($self->{scratchpad});
+}
+
+=item C<< $q->input_type($type) >>
+
+This method sets or retrieves the input type, which is used to find the input
+handler.
+
+=cut
+
+my %input_handler;
+
+sub input_type {
+	my $self = shift;
+	return  $self->{input_type} unless @_;
+	return ($self->{input_type} = undef) unless (my $type = shift);
+
+	$self->{input_type} = $type;
+}
+
+=item C<< $q->input($parameter) >>
+
+This method tells the Query to ask the current input handler to request that
+the named parameter be received from input.
+
+=cut
+
+sub input {
+	my ($self, $parameter) = @_;
+
+	$self->{input} = {} unless $self->{input};
+	return $self->{input}->{$parameter} if exists $self->{input}->{$parameter};
+
+	unless ($input_handler{$self->input_type}) {
+		warn "unknown input type: ", $self->input_type," \n";
+		return;
+	} else {
+		$input_handler{$self->input_type}->($self, $parameter);
+	}
+}
+
+=item C<< Querylet::Query->register_input_handler($type => \&handler) >>
+
+This method registers an input handler routine for the given type.
+
+If a type is registered that already has a handler, the old handler is quietly
+replaced.  (This makes replacing the built-in, naive handlers quite painless.)
+
+=cut
+
+sub register_input_handler {
+	shift;
+	my ($type, $handler) = @_;
+	$input_handler{$type} = $handler;
+}
+
 =item C<< $q->output_filename($filename) >>
 
 This method sets a filename to which output should be directed.
@@ -233,10 +300,10 @@ my %output_handler;
 
 sub output_type {
 	my $self = shift;
-	return  $self->{output_as} unless @_;
-	return ($self->{output_as} = undef) unless (my $type = shift);
+	return  $self->{output_type} unless @_;
+	return ($self->{output_type} = undef) unless (my $type = shift);
 
-	$self->{output_as} = $type;
+	$self->{output_type} = $type;
 }
 
 =item C<< $q->output >>
@@ -251,8 +318,6 @@ sub output {
 	my $self = shift;
 
 	return $self->{output} if exists $self->{output};
-
-	$self->output_type('csv') unless $self->output_type;
 
 	unless ($output_handler{$self->output_type}) {
 		warn "unknown output type: ", $self->output_type," \n";
@@ -299,19 +364,19 @@ sub write_output {
 	return $self->output;
 }
 
-=item C<< Querylet::Query->register_handler($type => \&handler) >>
+=item C<< Querylet::Query->register_output_handler($type => \&handler) >>
 
-This method registers a handler routine for the given type.  (The prototype
-sort of documents itself, doesn't it?)
+This method registers an output handler routine for the given type.  (The
+prototype sort of documents itself, doesn't it?)
 
 It can be called on an instance, too.  It doesn't mind.
 
-In a type is registered that already has a handler, the old handler is quietly
+If a type is registered that already has a handler, the old handler is quietly
 replaced.  (This makes replacing the built-in, naive handlers quite painless.)
 
 =cut
 
-sub register_handler {
+sub register_output_handler {
 	shift;
 	my ($type, $handler) = @_;
 	$output_handler{$type} = $handler;
@@ -319,16 +384,16 @@ sub register_handler {
 
 =item C<< as_csv($q) >>
 
-This is the default, built-in handler.  It outputs the results of the query as
-a CSV file.  That is, a series of comma-delimited fields, with each record
-separated by a newline.
+This is the default, built-in output handler.  It outputs the results of the
+query as a CSV file.  That is, a series of comma-delimited fields, with each
+record separated by a newline.
 
 If a output filename was specified, the output is sent to that file (unless it
 exists).  Otherwise, it's printed standard output.
 
 =cut
 
-__PACKAGE__->register_handler(csv   => \&as_csv);
+__PACKAGE__->register_output_handler(csv   => \&as_csv);
 sub as_csv {
 	my $q = shift;
 	my $csv;
@@ -344,16 +409,16 @@ sub as_csv {
 
 =item C<< as_html($q) >> 
 
-This is a built-in handler.  It outputs the results of the query as a minimal
-HTML document.  The query results are put into an HTML table in a document with
-no other contents.
+This is a built-in output handler.  It outputs the results of the query as a
+minimal HTML document.  The query results are put into an HTML table in a
+document with no other contents.
 
 If a output filename was specified, the output is sent to that file (unless it
 exists).  Otherwise, it's printed standard output.
 
 =cut
 
-__PACKAGE__->register_handler(html  => \&as_html);
+__PACKAGE__->register_output_handler(html  => \&as_html);
 sub as_html {
 	my $q = shift;
 	my $results = $q->results;
@@ -370,6 +435,23 @@ sub as_html {
 	   $html .= "</table></body></html>\n";
 
 	return $html;
+}
+
+=item C<< from_term($q, $parameter) >>
+
+This is a simple built-in input handler to prompt the user interactively for
+parameter inputs.  It is the default input handler.
+
+=cut
+
+__PACKAGE__->register_input_handler(term => \&from_term);
+sub from_term {
+	my ($q, $parameter) = @_;
+
+	print "enter $parameter: ";
+	my $value = <STDIN>;
+	chomp $value;
+	$q->{input}->{$parameter} = $value;
 }
 
 =back

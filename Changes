@@ -1,5 +1,8 @@
 Revision history for Querylet
-
+0.20    2004-09-19 17:25
+ * added input handler bass class
+ * added input and input type directives
+ * added "delete columns where"
 0.16    2004-09-18 15:45
  * added output handler base class (and tests)
  * updated tests to require DBD::SQLite 1+

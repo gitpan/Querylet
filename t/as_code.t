@@ -8,7 +8,7 @@ plan tests => 4;
 use Querylet;
 
 sub handler { sub { $main::passed = 1 } }
-Querylet::Query->register_handler(code => \&handler);
+Querylet::Query->register_output_handler(code => \&handler);
 
 database: dbi:SQLite:dbname=./t/wafers.db
 

@@ -6,6 +6,7 @@ META.yml			# Will be created by "make dist"
 
 lib/Querylet.pm
 lib/Querylet/Query.pm
+lib/Querylet/Input.pm
 lib/Querylet/Output.pm
 
 t/wafers.db

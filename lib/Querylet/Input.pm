@@ -1,4 +1,4 @@
-package Querylet::Output;
+package Querylet::Input;
 
 use strict;
 use warnings;
@@ -7,13 +7,13 @@ use Carp;
 
 =head1 NAME
 
-Querylet::Output - generic output handler for Querlet::Query
+Querylet::Input - generic input handler for Querlet::Query
 
 =head1 VERSION
 
 version 0.20
 
- $Id: Output.pm,v 1.2 2004/09/19 18:18:35 rjbs Exp $
+ $Id: Input.pm,v 1.1 2004/09/19 18:18:46 rjbs Exp $
 
 =cut
 
@@ -23,37 +23,40 @@ our $VERSION = '0.20';
 
 This is an abstract base class, meant for subclassing.
 
- package Querylet::Output::Tabbed;
- use base qw(Querylet::Output);
+ package Querylet::Input::Term;
+ use base qw(Querylet::Input);
 
- sub default_type { 'tabbed' }
- sub handler      { \&as_tabbed }  
+ sub default_type { 'term' }
+ sub handler      { \&from_term }  
 
- sub as_tabbed {
-   my ($query) = @_;
-   my @output;
-   push @output, join("\t", @{$query->columns});
-	 push @output, join("\t", @{$_{@{$query->colummns}}}) for @{$query->results};
-   return join("\n", @output);
+ sub from_term {
+   my ($query, $parameter) = @_;
+
+   print "$parameter: ";
+   my $input = <STDIN>;
+   chomp $input;
+   $query->{input}->{$parameter} = $input;
  }
 
  1;
 
 Then, in a querylet:
 
- use Querylet::Output::Tabbed;
+ use Querylet::Input::Term
+
+ query: SELECT * FROM users WHERE userid = '[% userid %]'
  
- output format: tabbed
+ input: userid
 
 Or, to override the registered type:
 
- use Querylet::Output::Tabbed 'tsv';
+ use Querylet::Input::Term 'stdin';
 
- output format: tsv
+ output format: stdin
 
 =head1 DESCRIPTION
 
-This class provides a simple way to write output handlers for Querylet, mostly
+This class provides a simple way to write input handlers for Querylet, mostly
 by providing an import routine that will register the handler with the
 type-name requested by the using script.
 
@@ -61,7 +64,7 @@ The methods C<default_type> and C<handler> must exist, as described below.
 
 =head1 IMPORT
 
-Querylet::Output provides an C<import> method that will register the handler
+Querylet::Input provides an C<import> method that will register the handler
 when the module is imported.  If an argument is given, it will be used as the
 type name to register.  Otherwise, the result of C<default_type> is used.
 
@@ -73,7 +76,7 @@ sub import {
 
 	my $handler = $class->handler;
 
-	Querylet::Query->register_output_handler($type => $handler);
+	Querylet::Query->register_input_handler($type => $handler);
 }
 
 =head1 METHODS
@@ -82,7 +85,7 @@ sub import {
 
 =item C<< default_type >>
 
-This method returns the name of the type for which the output handler will be
+This method returns the name of the type for which the input handler will be
 registered if no override is given.
 
 =cut
