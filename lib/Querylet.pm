@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.22
+version 0.24
 
- $Id: Querylet.pm,v 1.11 2004/09/20 18:46:35 rjbs Exp $
+ $Id: Querylet.pm,v 1.12 2004/09/21 20:08:53 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.22';
+our $VERSION = '0.24';
 
 =head1 SYNOPSIS
 

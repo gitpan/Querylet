@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.22
+version 0.24
 
- $Id: Query.pm,v 1.11 2004/09/20 18:46:35 rjbs Exp $
+ $Id: Query.pm,v 1.14 2004/09/21 20:08:53 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.22';
+our $VERSION = '0.24';
 
 =head1 SYNOPSIS
 
@@ -379,10 +379,11 @@ sub write_output {
 	my $output = $self->output;
 
 	if (ref $output eq 'CODE') {
-		$output->();
+		$output->($self->output_filename);
 	} else {
 		if ($self->output_filename) {
 			if (open(my $output_file, '>', $self->output_filename)) {
+				binmode $output_file;
 				print $output_file $self->output;
 				close $output_file;
 			} else {

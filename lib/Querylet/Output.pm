@@ -11,13 +11,13 @@ Querylet::Output - generic output handler for Querlet::Query
 
 =head1 VERSION
 
-version 0.22
+version 0.24
 
- $Id: Output.pm,v 1.3 2004/09/20 18:46:35 rjbs Exp $
+ $Id: Output.pm,v 1.4 2004/09/21 20:08:53 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.22';
+our $VERSION = '0.24';
 
 =head1 SYNOPSIS
 
