@@ -9,13 +9,13 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.20
+version 0.22
 
- $Id: Query.pm,v 1.10 2004/09/19 20:58:12 rjbs Exp $
+ $Id: Query.pm,v 1.11 2004/09/20 18:46:35 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.20';
+our $VERSION = '0.22';
 
 =head1 SYNOPSIS
 
@@ -33,13 +33,15 @@ our $VERSION = '0.20';
    SELECT *
    FROM   drinks d
    WHERE  abv > [% min_abv %]
-     AND  '[% required_liquor %]' IN (
+     AND  ? IN (
             SELECT liquor FROM ingredients WHERE i i.drink_id = d.drink_id
           )
    ORDER BY d.name
  ");
 
- $q->set_query_vars({ min_abv => 25, required_liquor => 'sour mash'});
+ $q->set_query_vars({ min_abv => 25 });
+
+ $q->bind("rum");
 
  $q->run;
 
@@ -66,7 +68,13 @@ This creates and returns a new Querylet::Query.
 
 =cut
 
-sub new { bless { output_type => 'csv', input_type => 'term' } => (shift); }
+sub new {
+	bless {
+		bind_parameters => [],
+		output_type     => 'csv',
+		input_type => 'term'
+	} => (shift);
+}
 
 =item C<< $q->set_dbh($dbh) >>
 
@@ -91,6 +99,30 @@ sub set_query {
 	my ($self, $sql) = @_;
 
 	$self->{query} = $sql;
+}
+
+=item C<< $q->bind(@parameters) >>
+
+This method sets the bind parameters, overwriting any existing parameters.
+
+=cut
+
+sub bind {
+	my ($self, @parameters) = @_;
+	$self->{bind_parameters} = [ @parameters ];
+}
+
+=item C<< $q->bind_more(@parameters) >>
+
+This method pushes the given parameters onto the list of bind parameters to use
+when executing the query.
+
+=cut
+
+sub bind_more {
+	my ($self, @parameters) = @_;
+	$self->{bind_parameters} = [] unless $self->{bind_parameters};
+	push @{$self->{bind_parameters}}, @parameters;
 }
 
 =item C<< $q->set_query_vars(\%variables) >>
@@ -145,7 +177,7 @@ sub run {
 	$self->{query} = $self->render_query if $self->{query_vars};
 
 	my $sth = $self->{dbh}->prepare($self->{query});
-	   $sth->execute;
+	   $sth->execute(@{$self->{bind_parameters}});
 	$self->{columns} = $sth->{NAME};
 	$self->{results} = $sth->fetchall_arrayref({});
 }
@@ -455,6 +487,10 @@ sub from_term {
 }
 
 =back
+
+=head1 SEE ALSO
+
+L<Querylet>, L<Querylet::Input>, L<Querylet::Output>
 
 =head1 AUTHOR
 

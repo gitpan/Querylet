@@ -11,13 +11,13 @@ Querylet::Input - generic input handler for Querlet::Query
 
 =head1 VERSION
 
-version 0.20
+version 0.22
 
- $Id: Input.pm,v 1.1 2004/09/19 18:18:46 rjbs Exp $
+ $Id: Input.pm,v 1.2 2004/09/20 18:46:35 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.20';
+our $VERSION = '0.22';
 
 =head1 SYNOPSIS
 
@@ -44,7 +44,7 @@ Then, in a querylet:
 
  use Querylet::Input::Term
 
- query: SELECT * FROM users WHERE userid = '[% userid %]'
+ query: SELECT * FROM users WHERE userid = ?
  
  input: userid
 

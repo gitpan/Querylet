@@ -1,4 +1,6 @@
 Revision history for Querylet
+0.22    2004-09-20 14:45
+ * added query parameterization (bind values)
 0.20    2004-09-19 17:25
  * added input handler bass class
  * added input and input type directives

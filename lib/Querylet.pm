@@ -10,13 +10,13 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.20
+version 0.22
 
- $Id: Querylet.pm,v 1.10 2004/09/19 18:18:35 rjbs Exp $
+ $Id: Querylet.pm,v 1.11 2004/09/20 18:46:35 rjbs Exp $
 
 =cut
 
-our $VERSION = '0.20';
+our $VERSION = '0.22';
 
 =head1 SYNOPSIS
 
@@ -99,7 +99,14 @@ interactively.  If this doesn't make sense, an error should be thrown.
 
 This directive provides the query to be run by Querylet.  The query is actually
 a template, and will be rendered before running if (and only if) the C<munge
-query> directive occurs in the querylet.
+query> directive occurs in the querylet.  The query can include bind parameters
+-- that is, you can put a ? in place of a value, and later use C<query
+parameter> to replace the value.  (See below.)
+
+=item C<query parameter: BLOCK>
+
+This directive sets the value for the next bind parameter.  You should have one
+(and only one) C<query parameter> directive for each "?" in your query.
 
 =item C<munge query: BLOCK>
 
@@ -201,6 +208,22 @@ value.
 =cut
 
 sub set_query  { shift; "\$q->set_query(q{$_[0]});\n"; }
+
+=item C<< Querylet->bind_next_param($text) >>
+
+This method produces Perl code to push the given parameters onto the list of
+bind parameters for the query.  (The text should evaluate to a list of
+parameters to push.)
+
+=cut
+
+sub bind_next_param { shift; <<""
+{
+	my \$input = \$q->{input};
+	\$q->bind_more($_[0]);
+}
+
+}
 
 =item C<< Querylet->set_query_vars(%values) >>
 
@@ -423,6 +446,11 @@ FILTER {
 	s/^ query:\s*(.+?)
 	    $to_next
 	 /  $class->set_query($1)
+	 /egmsx;
+	
+	s/^ query\s+parameter:\s*(.+?)
+	    $to_next
+	 /  $class->bind_next_param($1);
 	 /egmsx;
 
 	s/^ munge\s+query:\s*(.+?)
