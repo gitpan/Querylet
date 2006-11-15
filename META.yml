@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Querylet
-version:             0.321
+version:             0.322
 abstract:            simplified queries for the non-programmer
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.31
