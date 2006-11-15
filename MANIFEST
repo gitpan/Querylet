@@ -2,16 +2,14 @@ MANIFEST
 README
 Changes
 Makefile.PL
-META.yml
 
 lib/Querylet.pm
 lib/Querylet/Query.pm
 lib/Querylet/Input.pm
 lib/Querylet/Output.pm
 
-t/wafers.db
-
-t/00.load.t
+t/00-load.t
+t/01-makedb.t
 t/as_bogus.t
 t/as_code.t
 t/as_csv.t
@@ -29,3 +27,5 @@ t/query.t
 t/to_dot.t
 t/to_file.t
 t/to_stdout.t
+LICENSE
+META.yml                                 Module meta-data (added by MakeMaker)

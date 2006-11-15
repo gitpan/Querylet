@@ -13,7 +13,7 @@ Querylet::Output - generic output handler for Querlet::Query
 
 version 0.26
 
- $Id: Output.pm,v 1.5 2004/09/23 19:57:37 rjbs Exp $
+ $Id: /my/cs/projects/q/querylet/trunk/lib/Querylet/Output.pm 28012 2006-11-14T22:31:48.667796Z rjbs  $
 
 =cut
 
