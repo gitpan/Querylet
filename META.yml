@@ -1,8 +1,8 @@
 --- #YAML:1.0
 name:                Querylet
-version:             0.322
+version:             0.323
 abstract:            simplified queries for the non-programmer
-license:             ~
+license:             perl
 generated_by:        ExtUtils::MakeMaker version 6.31
 distribution_type:   module
 requires:     
