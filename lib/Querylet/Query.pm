@@ -13,13 +13,11 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.323
-
- $Id: /my/cs/projects/q/querylet/trunk/lib/Querylet/Query.pm 28037 2006-11-14T23:30:38.201244Z rjbs  $
+version 0.324
 
 =cut
 
-our $VERSION = '0.323';
+our $VERSION = '0.324';
 
 =head1 SYNOPSIS
 

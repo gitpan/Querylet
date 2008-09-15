@@ -10,13 +10,11 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.323
-
- $Id: /my/cs/projects/q/querylet/trunk/lib/Querylet.pm 28140 2006-11-15T20:06:44.831426Z rjbs  $
+version 0.324
 
 =cut
 
-our $VERSION = '0.323';
+our $VERSION = '0.324';
 
 =head1 SYNOPSIS
 
@@ -470,13 +468,13 @@ sub once {
   return $text || '';
 }
 
-my $to_next = qr/(?=^\S|\Z)/;
+my $to_next = qr/(?=^\S|\Z)/sm;
 
 FILTER {
   my ($class) = @_;
 
   s/\r//g;
-  s/\A/once('init',init)/egms;
+  s/\A/"\n" . once('init',init)/egms;
 
   s/^ database:\s*([^\n]+)
    /  $class->set_dbh($1)
