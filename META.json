@@ -44,16 +44,16 @@
    "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
-         "web" : "https://github.com/rjbs/querylet/issues"
+         "web" : "https://github.com/rjbs/Querylet/issues"
       },
-      "homepage" : "https://github.com/rjbs/querylet",
+      "homepage" : "https://github.com/rjbs/Querylet",
       "repository" : {
          "type" : "git",
-         "url" : "https://github.com/rjbs/querylet.git",
-         "web" : "https://github.com/rjbs/querylet"
+         "url" : "https://github.com/rjbs/Querylet.git",
+         "web" : "https://github.com/rjbs/Querylet"
       }
    },
-   "version" : "0.400",
+   "version" : "0.401",
    "x_Dist_Zilla" : {
       "perl" : {
          "version" : "5.019005"

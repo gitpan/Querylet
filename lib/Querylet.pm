@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package Querylet;
 {
-  $Querylet::VERSION = '0.400';
+  $Querylet::VERSION = '0.401';
 }
 use Filter::Simple;
 # ABSTRACT: simplified queries for the non-programmer
@@ -275,7 +275,7 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.400
+version 0.401
 
 =head1 SYNOPSIS
 

@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package Querylet::Input;
 {
-  $Querylet::Input::VERSION = '0.400';
+  $Querylet::Input::VERSION = '0.401';
 }
 # ABSTRACT: generic input handler for Querlet::Query
 
@@ -37,7 +37,7 @@ Querylet::Input - generic input handler for Querlet::Query
 
 =head1 VERSION
 
-version 0.400
+version 0.401
 
 =head1 SYNOPSIS
 

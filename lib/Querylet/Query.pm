@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package Querylet::Query;
 {
-  $Querylet::Query::VERSION = '0.400';
+  $Querylet::Query::VERSION = '0.401';
 }
 # ABSTRACT: renders and performs queries for Querylet
 
@@ -359,7 +359,7 @@ Querylet::Query - renders and performs queries for Querylet
 
 =head1 VERSION
 
-version 0.400
+version 0.401
 
 =head1 SYNOPSIS
 

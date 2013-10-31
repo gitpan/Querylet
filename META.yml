@@ -21,10 +21,10 @@ requires:
   strict: 0
   warnings: 0
 resources:
-  bugtracker: https://github.com/rjbs/querylet/issues
-  homepage: https://github.com/rjbs/querylet
-  repository: https://github.com/rjbs/querylet.git
-version: 0.400
+  bugtracker: https://github.com/rjbs/Querylet/issues
+  homepage: https://github.com/rjbs/Querylet
+  repository: https://github.com/rjbs/Querylet.git
+version: 0.401
 x_Dist_Zilla:
   perl:
     version: 5.019005
