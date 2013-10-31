@@ -1,8 +1,273 @@
-package Querylet;
-use Filter::Simple;
-
-use warnings;
 use strict;
+use warnings;
+package Querylet;
+{
+  $Querylet::VERSION = '0.400';
+}
+use Filter::Simple;
+# ABSTRACT: simplified queries for the non-programmer
+
+
+
+
+sub init { <<'END_CODE'
+use strict;
+use warnings;
+use Querylet::Query;
+my $q ||= new Querylet::Query;
+END_CODE
+}
+
+
+sub set_dbh    { shift; <<"END_CODE"
+use DBI;
+my \$dbh = DBI->connect(q|$_[0]|);
+\$q->set_dbh(\$dbh);
+END_CODE
+}
+
+
+sub set_query  { shift; "\$q->set_query(q{$_[0]});\n"; }
+
+
+sub bind_next_param { shift; <<"END_CODE"
+{
+  my \$input = \$q->{input};
+  \$q->bind_more($_[0]);
+}
+END_CODE
+}
+
+
+sub set_query_vars { shift; <<"END_CODE"
+{
+  my \$input = \$q->{input};
+  \$q->set_query_vars({$_[0]});
+}
+END_CODE
+}
+
+
+sub set_option  { shift;
+  my ($option, $value) = @_;
+  $value =~ s/(^\s+|\s+$)//g;
+  "\$q->option(q{$option}, q{$value});\n"
+}
+
+
+sub input { shift; "\$q->input(q{$_[0]});\n"; }
+
+
+sub set_input_type { shift; "\$q->input_type(q{$_[0]});\n"; }
+
+
+sub set_output_filename { shift; "\$q->output_filename(q{$_[0]});\n"; }
+
+
+sub set_output_method { shift; "\$q->write_type(q{$_[0]});\n"; }
+
+
+sub set_output_type { shift; "\$q->output_type(q{$_[0]});\n"; }
+
+
+sub munge_rows { shift; <<"END_CODE";
+foreach my \$row (\@{\$q->results}) {
+  $_[0]
+}
+END_CODE
+}
+
+
+sub delete_rows { shift; <<"END_CODE";
+my \@new_results;
+for my \$row (\@{\$q->results}) {
+  push \@new_results, \$row unless ($_[0]);
+}
+\$q->set_results([\@new_results]);
+END_CODE
+}
+
+
+sub munge_col  { shift; <<"END_CODE";
+foreach my \$row (\@{\$q->results}) {
+  foreach my \$value (\$row->{$_[0]}) {
+    $_[1]
+  }
+}
+END_CODE
+}
+
+
+sub add_col  { shift; <<"END_CODE";
+if (exists \$q->results->[0]->{$_[0]}) {
+  warn "column $_[0] already exists; ignoring directive\n";
+} else { 
+  push \@{\$q->columns}, '$_[0]';
+  foreach my \$row (\@{\$q->results}) {
+    for my \$value (\$row->{$_[0]}) {
+      $_[1]
+    }
+  }
+}
+END_CODE
+}
+
+
+sub delete_col  { shift; <<"END_CODE";
+\$q->set_columns( [ grep { \$_ ne "$_[0]" } \@{\$q->columns} ] );
+foreach my \$row (\@{\$q->results}) {
+  delete \$row->{$_[0]};
+}
+END_CODE
+}
+
+
+sub delete_cols { my $class = shift; qq|
+for my \$column (\@{\$q->columns}) {
+  my \@values;
+  push \@values, \$_->{\$column} for \@{\$q->results};
+  if ($_[0]) {
+| .   $class->delete_col('$column') . qq|
+  }
+}
+|
+
+}
+
+
+sub column_headers { my $class = shift; "\$q->set_headers({ $_[0] });" }
+
+
+sub munge_values { shift; <<"END_CODE";
+foreach my \$row (\@{\$q->results}) {
+  foreach my \$value (values \%\$row) {
+    $_[0]
+  }
+}
+END_CODE
+}
+
+
+sub output { shift; <<'END_CODE'
+$q->write_output;
+END_CODE
+}
+
+
+my %ran;
+
+sub once {
+  my ($id, $text) = @_;
+  return q{} if $ran{$id}++;
+  return $text || '';
+}
+
+my $to_next = qr/(?=^\S|\Z)/sm;
+
+FILTER {
+  my ($class) = @_;
+
+  s/\r//g;
+  s/\A/"\n" . once('init',init)/egms;
+
+  s/^ database:\s*([^\n]+)
+   /  $class->set_dbh($1)
+   /egmsx;
+
+  s/^ query:\s*(.+?)
+      $to_next
+   /  $class->set_query($1)
+   /egmsx;
+
+  s/^ query\s+parameter:\s*(.+?)
+      $to_next
+   /  $class->bind_next_param($1);
+   /egmsx;
+
+  s/^ munge\s+query:\s*(.+?)
+      $to_next
+   /  $class->set_query_vars($1);
+   /egmsx;
+
+  s/^ set\s+option\s+([\/A-Za-z0-9_]+):\s*(.+?)
+      $to_next
+   /  $class->set_option($1,$2);
+   /egmsx;
+
+  s/^ input:\s*([^\n]+)
+   /  $class->input($1)
+   /egmsx;
+
+  s/^ input\s+type:\s+(\w+)$
+   /  $class->set_input_type($1);
+   /egmsx;
+
+  s/^ munge\s+rows:\s*(.+?)
+      $to_next
+   /  $class->munge_rows($1);
+   /egmsx;
+
+  s/^ delete\s+rows\s+where:\s*(.+?)
+      $to_next
+   /  $class->delete_rows($1);
+   /egmsx;
+
+  s/^ munge\s+all\s+values:\s*(.+?)
+      $to_next
+   /  $class->munge_values($1);
+   /egmsx;
+
+  s/^ munge\s+column\s+(\w+):\s*(.+?)
+      $to_next
+   /  $class->munge_col($1, $2);
+   /egmsx;
+
+  s/^ add\s+column\s+(\w+):\s*(.+?)
+      $to_next
+   /  $class->add_col($1, $2);
+   /egmsx;
+
+  s/^ delete\s+column\s+(\w+)$
+   /  $class->delete_col($1);
+   /egmsx;
+
+  s/^ delete\s+columns\s+where:\s*(.+?)
+      $to_next
+   /  $class->delete_cols($1);
+   /egmsx;
+
+  s/^ column\s+headers?:\s*(.+?)
+      $to_next
+   /  $class->column_headers($1);
+   /egmsx;
+
+  s/^ output\s+format:\s+(\w+)$
+   /  $class->set_output_type($1);
+   /egmsx;
+
+  s/^ output\s+method:\s+(\w+)$
+   /  $class->set_output_method($1);
+   /egmsx;
+
+  s/^ output\s+file:\s+([_.A-Za-z0-9]+)$
+   /  $class->set_output_filename($1);
+   /egmsx;
+
+  s/^ no\s+output$
+   /  once('output', q{})
+   /egmsx;
+
+  s/\Z
+   /once('output',output)
+   /egmsx;
+}
+
+
+"I do endeavor to give satisfaction, sir.";
+
+__END__
+
+=pod
 
 =head1 NAME
 
@@ -10,11 +275,7 @@ Querylet - simplified queries for the non-programmer
 
 =head1 VERSION
 
-version 0.324
-
-=cut
-
-our $VERSION = '0.324';
+version 0.400
 
 =head1 SYNOPSIS
 
@@ -50,8 +311,6 @@ multiple output methods.  It processes and renders a template SQL query, then
 processes the query results before returning them to the user.
 
 The results can be returned in various formats.
-
-=cut
 
 =head1 SYNTAX
 
@@ -169,187 +428,113 @@ This directive instructs the Querylet not to output its results.
 Querylet is a source filter, implemented as a class suitable for subclassing.
 It rewrites the querylet to use the Querylet::Query class to perform its work.
 
-=cut
-
 =head2 METHODS
 
 =over 4
 
-=item C<< Querylet->init >>
+=item init
+
+  Querylet->init;
 
 The C<init> method is called to generate a header for the querylet, importing
 needed modules and creating the Query object.  By default, the Query object is
 assigned to C<$q>.
 
-=cut
+=item set_dbh
 
-sub init { <<'END_CODE'
-use strict;
-use warnings;
-use Querylet::Query;
-my $q ||= new Querylet::Query;
-END_CODE
-}
-
-=item C<< Querylet->set_dbh($text) >>
+  Querylet->set_dbh($text);
 
 This method returns Perl code to set the database handle to be used by the
 Query object.  The default implementation will attempt to use $text as a DBI
 connect string to create a dbh.
 
-=cut
+=item set_query
 
-sub set_dbh    { shift; <<"END_CODE"
-use DBI;
-my \$dbh = DBI->connect(q|$_[0]|);
-\$q->set_dbh(\$dbh);
-END_CODE
-}
-
-=item C<< Querylet->set_query($sql_template) >>
+  Querylet->set_query($sql_template);
 
 This method returns Perl code to set the Query object's SQL query to the passed
 value.
 
-=cut
+=item bind_next_param
 
-sub set_query  { shift; "\$q->set_query(q{$_[0]});\n"; }
-
-=item C<< Querylet->bind_next_param($text) >>
+  Querylet->bind_next_param($text)
 
 This method produces Perl code to push the given parameters onto the list of
 bind parameters for the query.  (The text should evaluate to a list of
 parameters to push.)
 
-=cut
+=item set_query_vars
 
-sub bind_next_param { shift; <<"END_CODE"
-{
-  my \$input = \$q->{input};
-  \$q->bind_more($_[0]);
-}
-END_CODE
-}
-
-=item C<< Querylet->set_query_vars(%values) >>
+  Querylet->set_query_vars(%values);
 
 This method returns Perl code to set the template variables to be used to
 render the SQL query template.
 
-=cut
+=item set_option
 
-sub set_query_vars { shift; <<"END_CODE"
-{
-  my \$input = \$q->{input};
-  \$q->set_query_vars({$_[0]});
-}
-END_CODE
-}
-
-=item C<< Querylet->set_option($option, $value) >>
+  Querylet->set_option($option, $value);
 
 This method returns Perl code to set the named query option to the given value.
 At present, this works by using the Querylet::Query scratchpad, but a more
 sophisticated method will probably be implemented.  Someday.
 
-=cut
+=item input
 
-sub set_option  { shift;
-  my ($option, $value) = @_;
-  $value =~ s/(^\s+|\s+$)//g;
-  "\$q->option(q{$option}, q{$value});\n"
-}
-
-=item C<< Querylet->input($parameter) >>
+  Querylet->input($parameter);
 
 This method returns code to instruct the Query object to get an input parameter
 with the given name.
 
-=cut
+=item set_input_type
 
-sub input { shift; "\$q->input(q{$_[0]});\n"; }
-
-=item C<< Querylet->set_input_type($type) >>
+  Querylet->set_input_type($type);
 
 This method returns Perl code to set the input format.
 
-=cut
+=item set_output_filename
 
-sub set_input_type { shift; "\$q->input_type(q{$_[0]});\n"; }
-
-=item C<< Querylet->set_output_filename($filename) >>
+  Querylet->set_output_filename($filename);
 
 This method returns Perl code to set the output filename.
 
-=cut
+=item set_output_method
 
-sub set_output_filename { shift; "\$q->output_filename(q{$_[0]});\n"; }
-
-=item C<< Querylet->set_output_method($type) >>
+  Querylet->set_output_method($type);
 
 This method returns Perl code to set the output method.
 
-=cut
+=item set_output_type
 
-sub set_output_method { shift; "\$q->write_type(q{$_[0]});\n"; }
-
-=item C<< Querylet->set_output_type($type) >>
+  Querylet->set_output_type($type);
 
 This method returns Perl code to set the output format.
 
-=cut
+=item munge_rows
 
-sub set_output_type { shift; "\$q->output_type(q{$_[0]});\n"; }
-
-=item C<< Querylet->munge_rows($text) >>
+  Querylet->munge_rows($text);
 
 This method returns Perl code to execute the Perl given in C<$text> for every
 row in the result set, aliasing C<$row> to the row on each iteration.
 
-=cut
+=item delete_rows
 
-sub munge_rows { shift; <<"END_CODE";
-foreach my \$row (\@{\$q->results}) {
-  $_[0]
-}
-END_CODE
-}
-
-=item C<< Querylet->delete_rows($text) >>
+  Querylet->delete_rows($text);
 
 This method returns Perl code to delete from the result set any row for which
 C<$text> evaluates true.  The code iterates over every row in the result set,
 aliasing C<$row> to the row.
 
-=cut
+=item munge_col
 
-sub delete_rows { shift; <<"END_CODE";
-my \@new_results;
-for my \$row (\@{\$q->results}) {
-  push \@new_results, \$row unless ($_[0]);
-}
-\$q->set_results([\@new_results]);
-END_CODE
-}
-
-=item C<< Querylet->munge_col($column, $text) >>
+  Querylet->munge_col($column, $text);
 
 This method returns Perl code to evaluate the Perl code given in C<$text> for
 each row, with the variables C<$row> and C<$value> aliased to the row and it's
 C<$column> value respectively.
 
-=cut
+=item add_col
 
-sub munge_col  { shift; <<"END_CODE";
-foreach my \$row (\@{\$q->results}) {
-  foreach my \$value (\$row->{$_[0]}) {
-    $_[1]
-  }
-}
-END_CODE
-}
-
-=item C<< Querylet->add_col($column, $text) >>
+  Querylet->add_col($column, $text);
 
 This method returns Perl code, adding a column with the given name.  The Perl
 given in C<$text> is evaluated for each row, with the variables C<$row> and
@@ -358,93 +543,41 @@ C<$value> aliased to the row and row column respectively.
 If a column with the given name already exists, a warning issue and the
 directive is ignored.
 
-=cut
+=item delete_col
 
-sub add_col  { shift; <<"END_CODE";
-if (exists \$q->results->[0]->{$_[0]}) {
-  warn "column $_[0] already exists; ignoring directive\n";
-} else { 
-  push \@{\$q->columns}, '$_[0]';
-  foreach my \$row (\@{\$q->results}) {
-    for my \$value (\$row->{$_[0]}) {
-      $_[1]
-    }
-  }
-}
-END_CODE
-}
-
-=item C<< Querylet->delete_col($column) >>
+  Querylet->delete_col($column);
 
 This method returns Perl code, deleting the named column from the result set.
 
-=cut
+=item delete_cols
 
-sub delete_col  { shift; <<"END_CODE";
-\$q->set_columns( [ grep { \$_ ne "$_[0]" } \@{\$q->columns} ] );
-foreach my \$row (\@{\$q->results}) {
-  delete \$row->{$_[0]};
-}
-END_CODE
-}
-
-=item C<< Querylet->delete_cols($text) >>
+  Querylet->delete_cols($text);
 
 This method returns Perl code to delete from the result set any row for which
 C<$text> evaluates true.  The code iterates over every column in the result
 set, creating C<@values>, which contains a copy of all the values in that
 columns, and C<$column>, which contains the name of the current column.
 
-=cut
+=item column_headers
 
-sub delete_cols { my $class = shift; qq|
-for my \$column (\@{\$q->columns}) {
-  my \@values;
-  push \@values, \$_->{\$column} for \@{\$q->results};
-  if ($_[0]) {
-| .   $class->delete_col('$column') . qq|
-  }
-}
-|
-
-}
-
-=item C<< Querylet->column_headers($text) >>
+  Querylet->column_headers($text);
 
 This method returns Perl code to set up column headers.  The C<$text> should be
 Perl code describing a hash of column-header pairs.
 
-=cut
+=item munge_values
 
-sub column_headers { my $class = shift; "\$q->set_headers({ $_[0] });" }
-
-=item C<< Querylet->munge_values($text) >>
+  Querylet->munge_values($text);
 
 This method returns Perl code to perform the code in C<$text> on every value in
 every row in the result set.
 
-=cut
+=item output
 
-sub munge_values { shift; <<"END_CODE";
-foreach my \$row (\@{\$q->results}) {
-  foreach my \$value (values \%\$row) {
-    $_[0]
-  }
-}
-END_CODE
-}
-
-=item C<< Querylet->output >>
+  Querylet->output;
 
 This returns the Perl instructing the Query to output its results in the
 requested format, to the requested destination.
-
-=cut
-
-sub output { shift; <<'END_CODE'
-$q->write_output;
-END_CODE
-}
 
 =back
 
@@ -452,121 +585,13 @@ END_CODE
 
 =over 4
 
-=item C<< once($id, $text) >>
+=item once
+
+  once($id, $text);
 
 This is a little utility function, used to ensure that a bit of text is only
 included once.  If it has been called before with the given C<$id>, an empty
 string is returned.  Otherwise, C<$text> is returned.
-
-=cut
-
-my %ran;
-
-sub once {
-  my ($id, $text) = @_;
-  return q{} if $ran{$id}++;
-  return $text || '';
-}
-
-my $to_next = qr/(?=^\S|\Z)/sm;
-
-FILTER {
-  my ($class) = @_;
-
-  s/\r//g;
-  s/\A/"\n" . once('init',init)/egms;
-
-  s/^ database:\s*([^\n]+)
-   /  $class->set_dbh($1)
-   /egmsx;
-
-  s/^ query:\s*(.+?)
-      $to_next
-   /  $class->set_query($1)
-   /egmsx;
-  
-  s/^ query\s+parameter:\s*(.+?)
-      $to_next
-   /  $class->bind_next_param($1);
-   /egmsx;
-
-  s/^ munge\s+query:\s*(.+?)
-      $to_next
-   /  $class->set_query_vars($1);
-   /egmsx;
-
-  s/^ set\s+option\s+([\/A-Za-z0-9_]+):\s*(.+?)
-      $to_next
-   /  $class->set_option($1,$2);
-   /egmsx;
-
-  s/^ input:\s*([^\n]+)
-   /  $class->input($1)
-   /egmsx;
-
-  s/^ input\s+type:\s+(\w+)$
-   /  $class->set_input_type($1);
-   /egmsx;
-
-  s/^ munge\s+rows:\s*(.+?)
-      $to_next
-   /  $class->munge_rows($1);
-   /egmsx;
-
-  s/^ delete\s+rows\s+where:\s*(.+?)
-      $to_next
-   /  $class->delete_rows($1);
-   /egmsx;
-
-  s/^ munge\s+all\s+values:\s*(.+?)
-      $to_next
-   /  $class->munge_values($1);
-   /egmsx;
-
-  s/^ munge\s+column\s+(\w+):\s*(.+?)
-      $to_next
-   /  $class->munge_col($1, $2);
-   /egmsx;
-
-  s/^ add\s+column\s+(\w+):\s*(.+?)
-      $to_next
-   /  $class->add_col($1, $2);
-   /egmsx;
-
-  s/^ delete\s+column\s+(\w+)$
-   /  $class->delete_col($1);
-   /egmsx;
-
-  s/^ delete\s+columns\s+where:\s*(.+?)
-      $to_next
-   /  $class->delete_cols($1);
-   /egmsx;
-
-  s/^ column\s+headers?:\s*(.+?)
-      $to_next
-   /  $class->column_headers($1);
-   /egmsx;
-
-  s/^ output\s+format:\s+(\w+)$
-   /  $class->set_output_type($1);
-   /egmsx;
-
-  s/^ output\s+method:\s+(\w+)$
-   /  $class->set_output_method($1);
-   /egmsx;
-
-  s/^ output\s+file:\s+([_.A-Za-z0-9]+)$
-   /  $class->set_output_filename($1);
-   /egmsx;
-
-  s/^ no\s+output$
-   /  once('output', q{})
-   /egmsx;
-
-  s/\Z
-   /once('output',output)
-   /egmsx;
-}
 
 =back
 
@@ -576,22 +601,13 @@ L<Querylet::Query>
 
 =head1 AUTHOR
 
-Ricardo SIGNES, C<< <rjbs@cpan.org> >>
+Ricardo SIGNES <rjbs@cpan.org>
 
-=head1 BUGS
+=head1 COPYRIGHT AND LICENSE
 
-Please report any bugs or feature requests to
-C<bug-querylet@rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org>.  I will be notified, and then you'll automatically be
-notified of progress on your bug as I make changes.
+This software is copyright (c) 2004 by Ricardo SIGNES.
 
-=head1 COPYRIGHT
-
-Copyright 2004-2006, Ricardo SIGNES, All Rights Reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-"I do endeavor to give satisfaction, sir.";

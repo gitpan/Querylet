@@ -1,9 +1,35 @@
-package Querylet::Output;
-
 use strict;
 use warnings;
+package Querylet::Output;
+{
+  $Querylet::Output::VERSION = '0.400';
+}
+# ABSTRACT: generic output handler for Querlet::Query
 
 use Carp;
+
+
+sub import {
+	my ($class, $type) = @_;
+	$type = $class->default_type unless $type;
+
+	my $handler = $class->handler;
+
+	Querylet::Query->register_output_handler($type => $handler);
+}
+
+
+sub default_type { croak "default_type method unimplemented" }
+
+
+sub handler { croak "handler method unimplemented" }
+
+
+"I do endeavor to give satisfaction, sir.";
+
+__END__
+
+=pod
 
 =head1 NAME
 
@@ -11,11 +37,7 @@ Querylet::Output - generic output handler for Querlet::Query
 
 =head1 VERSION
 
-version 0.324
-
-=cut
-
-our $VERSION = '0.324';
+version 0.400
 
 =head1 SYNOPSIS
 
@@ -63,59 +85,31 @@ Querylet::Output provides an C<import> method that will register the handler
 when the module is imported.  If an argument is given, it will be used as the
 type name to register.  Otherwise, the result of C<default_type> is used.
 
-=cut
-
-sub import {
-	my ($class, $type) = @_;
-	$type = $class->default_type unless $type;
-
-	my $handler = $class->handler;
-
-	Querylet::Query->register_output_handler($type => $handler);
-}
-
 =head1 METHODS
 
 =over 4
 
-=item C<< default_type >>
+=item default_type
 
 This method returns the name of the type for which the output handler will be
 registered if no override is given.
 
-=cut
-
-sub default_type { croak "default_type method unimplemented" }
-
-=item C<< handler >>
+=item handler
 
 This method returns a reference to the handler, which will be used to register
 the handler.
-
-=cut
-
-sub handler { croak "handler method unimplemented" }
 
 =back
 
 =head1 AUTHOR
 
-Ricardo SIGNES, C<< <rjbs@cpan.org> >>
+Ricardo SIGNES <rjbs@cpan.org>
 
-=head1 BUGS
+=head1 COPYRIGHT AND LICENSE
 
-Please report any bugs or feature requests to
-C<bug-querylet@rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org>.  I will be notified, and then you'll automatically be
-notified of progress on your bug as I make changes.
+This software is copyright (c) 2004 by Ricardo SIGNES.
 
-=head1 COPYRIGHT
-
-Copyright 2004 Ricardo SIGNES, All Rights Reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-"I do endeavor to give satisfaction, sir.";
